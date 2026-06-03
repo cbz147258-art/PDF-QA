@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF-QA 智能问答机器人</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="bg-shape shape-1"></div>
+    <div class="bg-shape shape-2"></div>
+    <div class="bg-shape shape-3"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">&#x1F4D6;</span>
+                <h1>PDF-QA</h1>
+                <span class="badge">RAG</span>
+            </div>
+            <p class="subtitle">上传 PDF，向文档提问，AI 帮你找答案</p>
+        </header>
+
+        <!-- Two-column layout -->
+        <div class="main-grid">
+            <!-- Left Panel: Upload & Documents -->
+            <aside class="left-panel">
+                <!-- Upload Zone -->
+                <div class="card upload-card">
+                    <h2 class="card-title">&#x1F4E4; 上传文档</h2>
+                    <div class="upload-zone" id="uploadZone">
+                        <div class="upload-icon">&#x1F4C4;</div>
+                        <p class="upload-text">拖拽 PDF 到此处</p>
+                        <p class="upload-hint">或点击选择文件，最大 20MB</p>
+                        <input type="file" id="fileInput" accept=".pdf" hidden>
+                    </div>
+                    <div class="upload-status" id="uploadStatus"></div>
+                    <div class="progress-bar" id="progressBar" hidden>
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+
+                <!-- Document List -->
+                <div class="card doc-list-card">
+                    <h2 class="card-title">
+                        &#x1F4C1; 文档列表
+                        <button class="btn-icon" id="refreshDocs" title="刷新">&#x21BB;</button>
+                    </h2>
+                    <div class="doc-list" id="docList">
+                        <div class="empty-state">
+                            <span class="empty-icon">&#x1F4AD;</span>
+                            <p>暂无文档，上传一个 PDF 开始吧</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Right Panel: Q&A -->
+            <main class="right-panel">
+                <div class="card chat-card">
+                    <h2 class="card-title">&#x1F4AC; 智能问答</h2>
+
+                    <!-- Document Selector -->
+                    <div class="doc-selector" id="docSelector">
+                        <select id="docSelect" class="select-field">
+                            <option value="">-- 请先选择文档 --</option>
+                        </select>
+                    </div>
+
+                    <!-- Chat Messages -->
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="welcome-msg">
+                            <div class="welcome-icon">&#x1F916;</div>
+                            <h3>你好！我是文档助手</h3>
+                            <p>上传 PDF 后，选择文档即可开始提问</p>
+                            <div class="suggestions">
+                                <span class="suggestion-chip">这篇文章讲了什么？</span>
+                                <span class="suggestion-chip">总结文档要点</span>
+                                <span class="suggestion-chip">列出关键数据和结论</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="chat-input-area">
+                        <div class="input-row">
+                            <textarea id="questionInput" 
+                                      placeholder="输入你的问题..." 
+                                      rows="1"
+                                      class="chat-input"></textarea>
+                            <button id="sendBtn" class="btn-send" title="发送">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 2L11 13"></path>
+                                    <path d="M22 2l-7 20-4-9-9-4 20-7z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <p class="input-hint">按 Enter 发送，Shift+Enter 换行</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- History Drawer toggle -->
+        <button class="history-toggle" id="historyToggle" title="查看历史记录">
+            &#x1F4DD;
+        </button>
+    </div>
+
+    <!-- History Drawer -->
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <div class="drawer" id="historyDrawer">
+        <div class="drawer-header">
+            <h3>&#x1F553; 问答历史</h3>
+            <button class="btn-close" id="closeDrawer">&times;</button>
+        </div>
+        <div class="drawer-body" id="historyContent">
+            <p class="drawer-hint">选择文档后点击历史按钮查看</p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
