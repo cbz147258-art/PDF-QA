@@ -384,3 +384,236 @@ async function loadHistory() {
 
 // ========== Init ==========
 loadDocuments();
+// ========== Tab Navigation ==========
+document.querySelectorAll(".tab-btn").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+        document.querySelectorAll(".tab-btn").forEach(function(b) { b.classList.remove("active"); });
+        document.querySelectorAll(".tab-content").forEach(function(t) { t.classList.remove("active"); });
+        btn.classList.add("active");
+        document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    });
+});
+
+// ========== Resume State ==========
+var currentResumeId = null;
+
+// ========== Resume Upload ==========
+var resumeUploadZone = document.getElementById("resumeUploadZone");
+var resumeFileInput = document.getElementById("resumeFileInput");
+
+resumeUploadZone.addEventListener("click", function() { resumeFileInput.click(); });
+
+resumeUploadZone.addEventListener("dragover", function(e) {
+    e.preventDefault();
+    resumeUploadZone.classList.add("drag-over");
+});
+resumeUploadZone.addEventListener("dragleave", function() {
+    resumeUploadZone.classList.remove("drag-over");
+});
+resumeUploadZone.addEventListener("drop", function(e) {
+    e.preventDefault();
+    resumeUploadZone.classList.remove("drag-over");
+    var file = e.dataTransfer.files[0];
+    if (file) handleResumeUpload(file);
+});
+
+resumeFileInput.addEventListener("change", function() {
+    var file = resumeFileInput.files[0];
+    if (file) handleResumeUpload(file);
+    resumeFileInput.value = "";
+});
+
+async function handleResumeUpload(file) {
+    var status = document.getElementById("resumeUploadStatus");
+    status.innerHTML = "<div class=\"upload-status uploading\">正在上传 " + file.name + "...</div>";
+    try {
+        var formData = new FormData();
+        formData.append("file", file);
+        var res = await fetch("/api/resume/upload", { method: "POST", body: formData });
+        var data = await res.json();
+        status.innerHTML = "<div class=\"upload-status success\">" + (data.message || "上传成功") + "</div>";
+        loadResumes();
+    } catch (err) {
+        status.innerHTML = "<div class=\"upload-status error\">上传失败: " + err.message + "</div>";
+    }
+}
+
+// ========== Load Resumes ==========
+async function loadResumes() {
+    try {
+        var res = await fetch("/api/resume/list");
+        var items = await res.json();
+        var list = document.getElementById("resumeList");
+        if (items.length === 0) {
+            list.innerHTML = "<div class=\"empty-state\"><span class=\"empty-icon\">&#x1F4ED;</span><p>暂无简历</p></div>";
+            return;
+        }
+        list.innerHTML = items.map(function(r) {
+            var active = r.id === currentResumeId ? "active" : "";
+            return "<div class=\"doc-item " + active + "\" data-resume-id=\"" + r.id + "\">" +
+                "<span class=\"doc-item-icon\">&#x1F4C4;</span>" +
+                "<div class=\"doc-item-info\">" +
+                "<div class=\"doc-item-name\">" + escapeHtml(r.filename) + "</div>" +
+                "<div class=\"doc-item-meta\">" + r.char_count + " 字" + (r.has_optimized ? " \u2705 已优化" : "") + "</div>" +
+                "</div></div>";
+        }).join("");
+        list.querySelectorAll(".doc-item").forEach(function(item) {
+            item.addEventListener("click", function() {
+                selectResume(parseInt(item.dataset.resumeId));
+            });
+        });
+    } catch (err) {
+        console.error("load resumes error", err);
+    }
+}
+
+async function selectResume(id) {
+    currentResumeId = id;
+    document.querySelectorAll("#resumeList .doc-item").forEach(function(el) {
+        el.classList.remove("active");
+    });
+    var target = document.querySelector("#resumeList [data-resume-id=\"" + id + "\"]");
+    if (target) target.classList.add("active");
+    document.getElementById("optimizeControls").style.display = "block";
+    try {
+        var res = await fetch("/api/resume/" + id);
+        var data = await res.json();
+        var content = document.getElementById("resumeContent");
+        content.innerHTML = "<div class=\"resume-text\">" + formatResumeText(data.original) + "</div>";
+        if (data.optimized) {
+            document.getElementById("comparisonView").style.display = "block";
+            document.getElementById("cmpOriginal").innerHTML = formatResumeText(data.original);
+            document.getElementById("cmpOptimized").innerHTML = formatResumeText(data.optimized);
+        } else {
+            document.getElementById("comparisonView").style.display = "none";
+        }
+    } catch (err) {
+        console.error("load resume error", err);
+    }
+}
+
+function formatResumeText(text) {
+    return escapeHtml(text)
+        .replace(/---/g, "<hr>")
+        .replace(/\n\n/g, "</p><p>")
+        .replace(/\n/g, "<br>")
+        .replace(/^/, "<p>")
+        .replace(/$/, "</p>");
+}
+
+// ========== Analyze Resume ==========
+document.getElementById("analyzeBtn").addEventListener("click", async function() {
+    if (!currentResumeId) { alert("请先选择简历"); return; }
+    var btn = this;
+    btn.disabled = true;
+    btn.innerHTML = "&#x23F3; 分析中...";
+    var content = document.getElementById("resumeContent");
+    try {
+        var res = await fetch("/api/resume/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ resume_id: currentResumeId })
+        });
+        var data = await res.json();
+        content.innerHTML = "<div class=\"resume-text\"><h3 style=\"color:var(--accent1);margin-bottom:12px;\">&#x1F50D; AI 简历分析</h3>" +
+            formatResumeText(data.analysis) + "</div>";
+    } catch (err) {
+        content.innerHTML = "<div class=\"resume-text\"><p style=\"color:#ef4444;\">分析失败: " + err.message + "</p></div>";
+    }
+    btn.disabled = false;
+    btn.innerHTML = "&#x1F50D; AI 分析简历";
+});
+
+// ========== Optimize Resume ==========
+document.getElementById("optimizeBtn").addEventListener("click", async function() {
+    if (!currentResumeId) { alert("请先选择简历"); return; }
+    var btn = this;
+    btn.disabled = true;
+    btn.innerHTML = "&#x23F3; 优化中...";
+    var target = document.getElementById("optimizeTarget").value;
+    var position = document.getElementById("positionInput").value;
+    var content = document.getElementById("resumeContent");
+    try {
+        var res = await fetch("/api/resume/optimize", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ resume_id: currentResumeId, target: target, position: position })
+        });
+        var data = await res.json();
+        // Show comparison
+        document.getElementById("comparisonView").style.display = "block";
+        document.getElementById("cmpOriginal").innerHTML = formatResumeText(data.original);
+        document.getElementById("cmpOptimized").innerHTML = formatResumeText(data.optimized);
+        content.innerHTML = "<div class=\"resume-text\"><h3 style=\"color:#10b981;margin-bottom:12px;\">&#x2728; 优化完成！</h3>" +
+            formatResumeText(data.optimized) + "</div>";
+        loadResumes();
+    } catch (err) {
+        content.innerHTML = "<div class=\"resume-text\"><p style=\"color:#ef4444;\">优化失败: " + err.message + "</p></div>";
+    }
+    btn.disabled = false;
+    btn.innerHTML = "&#x2728; AI 优化简历";
+});
+
+// ========== Optimize Target Change ==========
+document.getElementById("optimizeTarget").addEventListener("change", function() {
+    document.getElementById("positionGroup").style.display =
+        this.value === "position" ? "block" : "none";
+});
+
+// ========== Comparison View Tabs ==========
+document.querySelectorAll(".cmp-tab").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+        document.querySelectorAll(".cmp-tab").forEach(function(b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        var body = document.getElementById("comparisonBody");
+        if (btn.dataset.view === "optimized") {
+            body.classList.add("single-view");
+        } else {
+            body.classList.remove("single-view");
+        }
+    });
+});
+
+// ========== Refresh Resumes ==========
+document.getElementById("refreshResumes").addEventListener("click", loadResumes);
+
+// Remove old suggestion chips for resume page
+// Bind new suggestion chips
+setTimeout(function() {
+    document.querySelectorAll("#tab-resume .suggestion-chip").forEach(function(chip) {
+        chip.addEventListener("click", function() {
+            if (chip.textContent.indexOf("分析") >= 0) {
+                document.getElementById("analyzeBtn").click();
+            } else {
+                document.getElementById("optimizeBtn").click();
+            }
+        });
+    });
+}, 100);
+
+
+// ========== Section Optimization ==========
+document.addEventListener("click", function(e) {
+    var btn = e.target.closest(".section-opt-btn");
+    if (!btn) return;
+    if (!currentResumeId) { alert("请先选择简历"); return; }
+
+    var section = btn.dataset.section;
+    var sectionNames = { project: "项目经验", skill: "专业技能", summary: "自我评价", education: "教育背景" };
+    var content = document.getElementById("resumeContent");
+    content.innerHTML = "<div class=\"resume-text\"><p style=\"color:var(--text-secondary);\">正在优化「" + sectionNames[section] + "」...</p></div>";
+
+    fetch("/api/resume/optimize-section", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resume_id: currentResumeId, section: section })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        content.innerHTML = "<div class=\"resume-text\"><h3 style=\"color:#10b981;margin-bottom:12px;\">&#x2728; 优化后的「" + sectionNames[section] + "」</h3>" +
+            formatResumeText(data.optimized) + "</div>";
+    })
+    .catch(function(err) {
+        content.innerHTML = "<div class=\"resume-text\"><p style=\"color:#ef4444;\">优化失败: " + err.message + "</p></div>";
+    });
+});

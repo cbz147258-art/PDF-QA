@@ -22,3 +22,15 @@ class QARecord(Base):
     answer = Column(Text, nullable=False)
     sources = Column(Text, nullable=True)  # JSON格式，记录引用的文本块来源
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class ResumeRecord(Base):
+    __tablename__ = 'resume_records'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    filename = Column(String(255), nullable=False)
+    file_path = Column(String(500), nullable=False)
+    original_text = Column(Text, nullable=False)
+    optimized_text = Column(Text, nullable=True)
+    optimize_target = Column(String(50), default='')
+    uploaded_at = Column(DateTime, default=datetime.datetime.utcnow)

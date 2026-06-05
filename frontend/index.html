@@ -21,9 +21,21 @@
             </div>
             <p class="subtitle">上传 PDF，向文档提问，AI 帮你找答案</p>
         </header>
+        <!-- Navigation Tabs -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="qa">
+                <span class="tab-icon">&#x1F4C4;</span> PDF 问答
+            </button>
+            <button class="tab-btn" data-tab="resume">
+                <span class="tab-icon">&#x1F4DD;</span> 简历优化
+            </button>
+        </div>
+
+
 
         <!-- Two-column layout -->
-        <div class="main-grid">
+        <div class="tab-content active" id="tab-qa">
+    <div class="main-grid">
             <!-- Left Panel: Upload & Documents -->
             <aside class="left-panel">
                 <!-- Upload Zone -->
@@ -120,6 +132,118 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+        </div>
+</div>
+
+    <!-- Resume Tab -->
+    <div class="tab-content" id="tab-resume">
+        <div class="main-grid">
+            <!-- Left: Upload & Controls -->
+            <aside class="left-panel">
+                <!-- Resume Upload -->
+                <div class="card upload-card">
+                    <h2 class="card-title">&#x1F4E4; 上传简历</h2>
+                    <div class="upload-zone" id="resumeUploadZone">
+                        <div class="upload-icon">&#x1F4C4;</div>
+                        <p class="upload-text">拖拽 PDF 简历到此处</p>
+                        <p class="upload-hint">或点击选择文件</p>
+                        <input type="file" id="resumeFileInput" accept=".pdf" hidden>
+                    </div>
+                    <div id="resumeUploadStatus"></div>
+                </div>
+
+                <!-- Resume List -->
+                <div class="card doc-list-card">
+                    <h2 class="card-title">
+                        &#x1F4CB; 已上传简历
+                        <button class="btn-icon" id="refreshResumes" title="Refresh">&#x21BB;</button>
+                    </h2>
+                    <div class="doc-list" id="resumeList">
+                        <div class="empty-state">
+                            <span class="empty-icon">&#x1F4ED;</span>
+                            <p>暂无简历，上传一个 PDF 开始吧</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Optimization Controls -->
+                <div class="card" id="optimizeControls" style="display:none;">
+                    <h2 class="card-title">&#x2699;&#xFE0F; 优化设置</h2>
+                    <div class="form-group">
+                        <label>优化方向</label>
+                        <select id="optimizeTarget" class="select-field">
+                            <option value="general">通用优化</option>
+                            <option value="professional">专业风格</option>
+                            <option value="technical" selected>突出技术能力</option>
+                            <option value="position">适配特定岗位</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="positionGroup" style="display:none;">
+                        <label>目标岗位描述</label>
+                        <textarea id="positionInput" class="chat-input" rows="3" placeholder="例如：高级Python后端开发工程师..."></textarea>
+                    </div>
+                    <button class="btn-send" id="analyzeBtn" style="width:100%;margin-bottom:8px;justify-content:center;">
+                        &#x1F50D; AI 分析简历
+                    </button>
+                    <button class="btn-send" id="optimizeBtn" style="width:100%;justify-content:center;background:#10b981;">
+                        &#x2728; AI 优化简历
+                    </button>
+                    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+                        <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px;">按板块优化</label>
+                        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                            <button class="cmp-tab section-opt-btn" data-section="project">项目经验</button>
+                            <button class="cmp-tab section-opt-btn" data-section="skill">专业技能</button>
+                            <button class="cmp-tab section-opt-btn" data-section="summary">自我评价</button>
+                            <button class="cmp-tab section-opt-btn" data-section="education">教育背景</button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Right: Content -->
+            <main class="right-panel">
+                <!-- Resume Viewer -->
+                <div class="card chat-card" id="resumeViewer">
+                    <h2 class="card-title" id="resumeViewerTitle">&#x1F4D6; 简历内容</h2>
+                    <div class="resume-content" id="resumeContent">
+                        <div class="welcome-msg">
+                            <div class="welcome-icon">&#x1F4DD;</div>
+                            <h3>简历优化助手</h3>
+                            <p>上传简历后，我可以帮你分析、优化简历内容</p>
+                            <div class="suggestions">
+                                <span class="suggestion-chip">分析我的简历</span>
+                                <span class="suggestion-chip">优化项目经验</span>
+                                <span class="suggestion-chip">优化专业技能描述</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison View -->
+                <div class="card chat-card" id="comparisonView" style="display:none;">
+                    <div class="comparison-header">
+                        <h2 class="card-title" style="border:none;margin:0;">&#x1F4CA; 前后对比</h2>
+                        <div class="comparison-tabs">
+                            <button class="cmp-tab active" data-view="side">左右对比</button>
+                            <button class="cmp-tab" data-view="optimized">仅看优化版</button>
+                        </div>
+                    </div>
+                    <div class="comparison-body" id="comparisonBody">
+                        <div class="cmp-col original-col">
+                            <h3 class="cmp-label">原文</h3>
+                            <div class="cmp-text" id="cmpOriginal"></div>
+                        </div>
+                        <div class="cmp-divider"></div>
+                        <div class="cmp-col optimized-col">
+                            <h3 class="cmp-label">优化版</h3>
+                            <div class="cmp-text" id="cmpOptimized"></div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+<script src="app.js"></script>
 </body>
 </html>

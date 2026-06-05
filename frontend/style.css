@@ -408,3 +408,111 @@ body {
     .chat-card { max-height: 60vh; }
     .drawer { width: 100%; }
 }
+/* ========== Tab Navigation ========== */
+.tab-nav {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 4px;
+    border: 1px solid var(--border);
+}
+.tab-btn {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.tab-btn:hover { color: var(--text); background: rgba(99,102,241,0.08); }
+.tab-btn.active { color: #fff; background: var(--accent1); box-shadow: 0 2px 8px rgba(99,102,241,0.3); }
+.tab-icon { font-size: 18px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ========== Resume Styles ========== */
+.resume-content { min-height: 400px; }
+.resume-text {
+    padding: 10px 0;
+    line-height: 1.8;
+    font-size: 14px;
+    white-space: pre-wrap;
+}
+.resume-text hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+}
+.resume-text p { margin-bottom: 8px; }
+
+.form-group { margin-bottom: 12px; }
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+/* ========== Comparison View ========== */
+.comparison-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+}
+.comparison-tabs { display: flex; gap: 4px; }
+.cmp-tab {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.cmp-tab.active { background: var(--accent1); color: #fff; border-color: var(--accent1); }
+.comparison-body {
+    display: grid;
+    grid-template-columns: 1fr 1px 1fr;
+    gap: 0;
+    min-height: 400px;
+}
+.comparison-body.single-view {
+    grid-template-columns: 1fr;
+}
+.comparison-body.single-view .original-col { display: none; }
+.comparison-body.single-view .cmp-divider { display: none; }
+.cmp-col { padding: 20px; overflow-y: auto; max-height: 600px; }
+.cmp-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid;
+}
+.original-col .cmp-label { color: #f59e0b; border-color: #f59e0b; }
+.optimized-col .cmp-label { color: #10b981; border-color: #10b981; }
+.cmp-text {
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+.cmp-text p { margin-bottom: 6px; }
+.cmp-divider {
+    width: 1px;
+    background: var(--border);
+}
