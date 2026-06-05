@@ -15,16 +15,13 @@ class QARequest(BaseModel):
 
 @router.post("/ask")
 async def ask_question(req: QARequest, db: AsyncSession = Depends(get_db)):
-    # 查找文档
     result = await db.execute(select(Document).where(Document.id == req.document_id))
     doc = result.scalar_one_or_none()
     if not doc:
-        raise HTTPException(404, "文档不存在")
+        raise HTTPException(404, "Document not found")
 
-    # RAG问答
-    rag_result = await ask(req.question, doc.chroma_collection)
+    rag_result = await ask(req.question, doc.vector_collection)
 
-    # 记录到SQLite
     qa = QARecord(
         document_id=doc.id,
         question=req.question,

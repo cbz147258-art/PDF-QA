@@ -1,25 +1,34 @@
-"""PDF 处理模块 —— 基于 LangChain 全家桶：提取 → 切分 → 向量化 → 存入 ChromaDB"""
-import os
+"""PDF processor - pymilvus MilvusClient (Lite) for vector storage"""
 import hashlib
+import os
+import time
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
+from pymilvus import MilvusClient
 from app.config import (
     CHUNK_SIZE, CHUNK_OVERLAP, EMBEDDING_MODEL_NAME,
-    CHROMA_PERSIST_DIR, TOP_K_RETRIEVAL
+    MILVUS_DB_PATH, TOP_K_RETRIEVAL
 )
 
-# LangChain HuggingFace 嵌入模型（自动下载 BGE 中文模型）
 embeddings = HuggingFaceEmbeddings(
     model_name=EMBEDDING_MODEL_NAME,
     model_kwargs={"device": "cpu"},
     encode_kwargs={"normalize_embeddings": True},
 )
 
+_milvus_client = None
+
+def _get_client() -> MilvusClient:
+    global _milvus_client
+    if _milvus_client is None:
+        os.makedirs(os.path.dirname(MILVUS_DB_PATH), exist_ok=True)
+        _milvus_client = MilvusClient(uri=MILVUS_DB_PATH)
+    return _milvus_client
+
 
 def extract_text(file_path: str) -> str:
-    """从 PDF 中提取纯文本"""
+    """Extract plain text from PDF"""
     reader = PdfReader(file_path)
     text_parts = []
     for page in reader.pages:
@@ -30,7 +39,7 @@ def extract_text(file_path: str) -> str:
 
 
 def split_text(text: str) -> list[str]:
-    """文本切分：优先按段落和中文标点切分"""
+    """Split text by semantic boundaries"""
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
@@ -40,27 +49,41 @@ def split_text(text: str) -> list[str]:
 
 
 def get_collection_name(filename: str) -> str:
-    """为每个文档生成唯一的 ChromaDB 集合名称"""
+    """Generate unique Milvus collection name per document"""
     h = hashlib.md5(filename.encode()).hexdigest()[:12]
     return f"doc_{h}"
 
 
 def index_document(file_path: str, filename: str) -> dict:
-    """处理 PDF：提取文本 → 切分 → 向量化 → 存入 ChromaDB（LangChain 风格）"""
+    """Process PDF: extract -> split -> embed -> store in Milvus"""
     text = extract_text(file_path)
     chunks = split_text(text)
     if not chunks:
-        raise ValueError("PDF 中未能提取到文本内容，可能是扫描版 PDF")
+        raise ValueError("No text extracted from PDF, possibly scanned PDF")
 
     collection_name = get_collection_name(filename)
+    client = _get_client()
 
-    # 使用 LangChain Chroma wrapper：直接 from_texts 创建/覆盖集合
-    Chroma.from_texts(
-        texts=chunks,
-        embedding=embeddings,
+    # Drop existing collection for re-upload
+    if client.has_collection(collection_name):
+        client.drop_collection(collection_name)
+
+    # Generate embeddings
+    chunk_embeddings = [embeddings.embed_query(c) for c in chunks]
+
+    # Prepare data
+    data = [
+        {"id": i, "vector": chunk_embeddings[i], "text": chunks[i]}
+        for i in range(len(chunks))
+    ]
+
+    # Create collection with COSINE metric and insert data
+    client.create_collection(
         collection_name=collection_name,
-        persist_directory=CHROMA_PERSIST_DIR,
+        dimension=len(chunk_embeddings[0]),
+        metric_type="COSINE",
     )
+    client.insert(collection_name=collection_name, data=data)
 
     return {
         "chunk_count": len(chunks),
@@ -70,11 +93,19 @@ def index_document(file_path: str, filename: str) -> dict:
 
 
 def search(query: str, collection_name: str, top_k: int = TOP_K_RETRIEVAL) -> list[str]:
-    """向量检索：用问题去 ChromaDB 中找最相似的文本块（LangChain 风格）"""
-    vectorstore = Chroma(
+    """Vector search: find most similar text chunks in Milvus"""
+    client = _get_client()
+
+    # Load collection for searching
+    client.load_collection(collection_name)
+
+    query_embedding = [embeddings.embed_query(query)]
+
+    results = client.search(
         collection_name=collection_name,
-        embedding_function=embeddings,
-        persist_directory=CHROMA_PERSIST_DIR,
+        data=query_embedding,
+        limit=top_k,
+        output_fields=["text"],
     )
-    docs = vectorstore.similarity_search(query, k=top_k)
-    return [doc.page_content for doc in docs]
+
+    return [hit["entity"]["text"] for hit in results[0]]
